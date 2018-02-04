@@ -11,7 +11,6 @@ defmodule Calc do
   end
 
   def eval(x) do
-    IO.inspect x
     args = String.split(x, "")
     chop = Enum.count(args) - 3
     build_exp(Enum.slice(args, 0..chop), 0, 0)
@@ -22,28 +21,36 @@ defmodule Calc do
   # 1 = breaking up exp by -
   # 2 = breaking up exp by +
   # 3 = breaking up exp by /
-  # 4 = breaking up exp by *
+  # 4 = breaking up exp by * (lowest level, first operation executed)
   # 5 = parse_arg
 
-  def build_exp(args, x, status) when status == 0 do
+  # For evaluating expressions and dealing with parenthesis
+  defp build_exp(args, x, status) when status == 0 do
   lastIndex = Enum.count(args) - 1
     cond do
       (Enum.at(args, x, "") == "(") ->
-        # IO.puts "parens caught"
-        closeParen = find_close_paren(args, x+1, 0)
-        # IO.inspect closeParen
-        parensExp = build_exp(Enum.slice(args, (x+1)..(closeParen-1)), 0, 0)
-        # IO.inspect parensExp
-        # IO.puts "new expression"
+        closeParen = find_close_paren(args, x+1, 0) # Index of closing parenthesis
+        parensExp = build_exp(Enum.slice(args, (x+1)..(closeParen-1)), 0, 0) # Expression inside parens
+        # Expression before parens
+        negative = ((x != 0) && (Enum.at(args, x-1, "") == "-") && is_negative(args, x-1))
         firstChop = 
-          case x do
-            0 -> []
-            _ -> Enum.slice(args, 0..(x-1))
+          cond do
+            x == 0 ->
+              []
+            ((x == 1) && (Enum.at(args, x-1, "") == "-")) ->
+              []
+            negative ->
+              Enum.slice(args, 0..(x-2))
+            true ->
+              Enum.slice(args, 0..(x-1))
           end
-        parensExpString = Integer.to_string(parensExp)
+        parensExpString = 
+          case negative do
+            true -> Integer.to_string(0 - parensExp)
+            false -> Integer.to_string(parensExp)
+          end
         middle = Enum.slice(String.split(parensExpString, ""), 0..(String.length(parensExpString)))
-        # IO.inspect [Enum.slice(args, 0..(x-1)), [" ", Integer.to_string(parensExp), " "], Enum.slice(args, (closeParen+1)..lastIndex)]
-        newExp = Enum.concat([firstChop, [" "], middle, [" "], Enum.slice(args, (closeParen+1)..lastIndex)])
+        newExp = Enum.concat([firstChop, [" "], middle, [" "], Enum.slice(args, (closeParen+1)..lastIndex)]) # Full expression
         build_exp(newExp, 0, 0)
       (x == lastIndex) ->
         build_exp(args, 0, 1)
@@ -52,16 +59,14 @@ defmodule Calc do
     end
   end
 
-  ## need to also check for negative sign when parsing this
-  ## way to do this is by checking if there is an arg in the slice before the "-" sign
-  def build_exp(args, x, status) when status > 0 do
+  # For evaluating expressiong and dealing with order of operations
+  defp build_exp(args, x, status) when status > 0 do
     lastIndex = Enum.count(args) - 1
     cond do
       (status == 5) ->
         parse_arg(args)
-      (status == 1) && (Enum.at(args, x, "") == "-") && (is_negative(args, x)) -> # (x == 0) || (no_garbage(Enum.join(Enum.slice(args, 0..(x-1))), 0)) || 
+      (status == 1) && (Enum.at(args, x, "") == "-") && (is_negative(args, x)) ->
         # Check for negative sign vs. subtraction operator
-        # IO.puts "shouldnt be here"
         build_exp(args, x+1, status)
       (Enum.at(args, x, "") == status_operator(status)) ->
         if ((x == lastIndex) || (x == 0)) do
@@ -77,7 +82,8 @@ defmodule Calc do
     end
   end
   
-  def build_exp(args, x, status) do
+  # Should not be called
+  defp build_exp(args, x, status) do
     IO.puts "args: "
     IO.inspect args
     IO.puts "x: "
@@ -87,14 +93,14 @@ defmodule Calc do
     raise("Invalid input") # Should be covered in other cases
   end
 
-  def parse_arg(xs) do
+  # Parses what should be a valid number argument
+  defp parse_arg(xs) do
     cond do
       (Enum.at(xs, 0, "") == " ") -> # Remove leading spaces
         last = Enum.count(xs) - 1
         parse_arg(Enum.slice(xs, 1..last))
       true -> # Parse arg if possible
         tuple = Integer.parse(Enum.join(xs))
-        # IO.inspect tuple
         if (!no_garbage(elem(tuple, 1), 0)) do
           raise("Invalid input") # Bad data!
         end
@@ -103,7 +109,7 @@ defmodule Calc do
   end
 
   # Makes sure any characters after integer are just trailing spaces
-  def no_garbage(str, x) do
+  defp no_garbage(str, x) do
     cond do
       (String.length(str) == x) ->
         true
@@ -114,7 +120,8 @@ defmodule Calc do
     end
   end
 
-  def find_close_paren(args, x, acc) do
+  # Finds and returns index of closing parenthesis
+  defp find_close_paren(args, x, acc) do
     lastIndex = Enum.count(args) - 1
     cond do
       (x == lastIndex) && ((acc != 0) || (Enum.at(args, x, "") != ")")) ->
@@ -131,7 +138,7 @@ defmodule Calc do
   end
 
   # Calculate arguments based on status of expression
-  def calculate(first, second, status) do
+  defp calculate(first, second, status) do
     cond do
       (status == 1) ->
         first - second
@@ -145,7 +152,7 @@ defmodule Calc do
   end
 
   # Returns true if there is nothing before the "-" sign, or if there is an operator directly before it
-  def is_negative(args, x) do
+  defp is_negative(args, x) do
     cond do
       (x == 0) ->
         true
@@ -165,7 +172,7 @@ defmodule Calc do
   end
 
   # Return string of operator to be checked by status 
-  def status_operator(x) do 
+  defp status_operator(x) do 
     cond do
       (x == 1) ->
         "-"

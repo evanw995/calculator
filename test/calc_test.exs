@@ -20,14 +20,23 @@ defmodule CalcTest do
     assert Calc.eval("-5 + 5\n") == 0
     assert Calc.eval("    -5 + 5\n") == 0
     assert Calc.eval("5 + (-5 * 5)\n") == -20
+    assert Calc.eval("5 + -(5 * 5)\n") == -20
     assert Calc.eval("5 + (-5) * 5\n") == -20
     assert Calc.eval("-5--5\n") == 0
     assert Calc.eval("-5+-5\n") == -10
+    assert Calc.eval("-(5 * 5)\n") == -25
+    assert Calc.eval("5--(5 * 5)\n") == 30
   end
 
   test "bad input" do
     assert_raise RuntimeError, fn ->
       Calc.eval("((5))) + (5 * 5)\n")
+    end
+    assert_raise ArgumentError, fn ->
+      Calc.eval("--(5)\n")
+    end
+    assert_raise ArgumentError, fn ->
+      Calc.eval("- 5\n")
     end
     assert_raise RuntimeError, fn ->
       Calc.eval("(((5) + (5 * 5)\n")
