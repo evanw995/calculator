@@ -1,0 +1,415 @@
+# def eval_exp(exp) do
+    # if exp[0] isArray, eval_exp(exp[0]) exp[1] exp[2]
+    # if exp[2] isArray, exp[0] exp[1] eval_exp(exp[2])
+    # return exp[0] exp[1] exp[2]
+  # end
+
+  # STATUS
+  # -n = number of parens remaining
+  # 0 = none, begining value
+  # 1 = breaking up exp by *
+  # 2 = breaking up exp by /
+  # 3 = breaking up exp by +
+  # 4 = breaking up exp by -
+  # 5 = parse number
+  # 6 = number is finished with trailing spaces
+  def find_close_paren(args, x, acc) do
+    if Enum.at(args, x, "") == "(" do
+      find_close_paren(args, x+1, acc+1)
+    end
+    if Enum.at(args, x, "") == ")" do
+      newAcc = acc - 1
+      if newAcc == -1 do
+        x
+      end
+      find_close_paren(args, x+1, acc+1)
+    end
+  end
+
+  def add(num1, num2) do
+    newChar = "5"
+    parsed = Integer.parse("5#{newChar}")
+    value = elem(parsed, 0)
+    value
+  end
+  
+  def build_exp(args, x, exp, status, value) do
+    5 + 5
+    # No first arg
+    # Eval all parens
+    # exit(:seems_bad) # works
+    lastIndex = Enum.count(args) - 1 ## Newline and empty char included by default
+    if status < 1 do
+      if Enum.at(args, x, "") == "(" do
+        closeParen = find_close_paren(args, x+1, 0)
+        parensExp = build_exp(Enum.slice(args, (x+1)..(closeParen-1)), 0, exp, 0, "")
+        newExp = Enum.concat([Enum.slice(args, 0..(x-1)), [" ", Integer.to_string(parensExp), " "], Enum.slice(args, closeParen..lastIndex)])
+        build_exp(newExp, 0, [], 0, "")
+      end
+      if x == lastIndex do
+        build_exp(args, 0, exp, 1, value)
+      end
+      build_exp(args, x+1, exp, status, value)
+    end
+
+    if status == 1 do
+      if Enum.at(args, x, "") == "*" do
+        beforeMult = build_exp(Enum.slice(args, 0..(x-1)), 0, exp, 2, value) # Does not need to check for *
+        afterMult = build_exp(Enum.slice(args, (x+1)..lastIndex), 0, exp, 1, value) # Needs to check for *
+        beforeMult * afterMult
+      end
+      if x == lastIndex do
+        build_exp(args, 0, exp, 2, value)
+      end
+      build_exp(args, x+1, exp, status, value)
+    end
+
+    if status == 2 do
+      if Enum.at(args, x, "") == "/" do
+        beforeDiv = build_exp(Enum.slice(args, 0..(x-1)), 0, exp, 3, value) # Does not need to check for /
+        afterDiv = build_exp(Enum.slice(args, (x+1)..lastIndex), 0, exp, 2, value) # Needs to check for /
+        beforeDiv / afterDiv
+      end
+      if x == lastIndex do
+        build_exp(args, 0, exp, 3, value)
+      end
+      build_exp(args, x+1, exp, status, value)
+    end
+
+    if status == 3 do
+      if Enum.at(args, x, "") == "+" do
+        IO.puts "we are here"
+        IO.inspect Enum.slice(args, 0..(x-1))
+        IO.inspect Enum.slice(args, (x+1)..lastIndex)
+        IO.inspect build_exp(Enum.slice(args, 0..(x-1)), 0, exp, 4, value)
+        beforeAdd = build_exp(Enum.slice(args, 0..(x-1)), 0, exp, 4, value) # Does not need to check for +
+        IO.puts "beforeAdd completed"
+        afterAdd = build_exp(Enum.slice(args, (x+1)..lastIndex), 0, exp, 3, value) # Needs to check for +
+        return = beforeAdd + afterAdd
+        return
+      end
+      if x == lastIndex do
+        build_exp(args, 0, exp, 4, value)
+      end
+      build_exp(args, x+1, exp, status, value)
+    end
+
+    if status == 4 do
+      if Enum.at(args, x, "") == "-" do
+        beforeSub = build_exp(Enum.slice(args, 0..(x-1)), 0, exp, 5, value) # Does not need to check for *
+        afterSub = build_exp(Enum.slice(args, (x+1)..lastIndex), 0, exp, 4, value) # Needs to check for *
+        beforeSub - afterSub
+      end
+      if x == lastIndex do
+        build_exp(args, 0, exp, 5, value)
+      end
+      build_exp(args, x+1, exp, status, value)
+    end
+    
+    if status == 5 do # PARSE NUMBER
+      IO.puts "status 5"
+      IO.inspect x
+      IO.inspect args
+      IO.inspect value
+      cond do
+        x == lastIndex ->
+          newChar = Enum.at(args, x, "")
+          parsed = Integer.parse("#{value}#{newChar}")
+          value = elem(parsed, 0)
+          IO.puts "return"
+          IO.inspect value
+          value
+        Enum.at(args, x, "") == " " ->
+          cond do
+            value == "" ->
+              build_exp(args, x+1, exp, 5, "")
+            true ->
+              build_exp(args, x, exp, 6, value)
+          end
+        true ->
+          newChar = Enum.at(args, x, "")
+          build_exp(args, x+1, exp, 5, "#{value}#{newChar}")
+      end
+    end
+
+    if status == 6 do # Number should be done
+      IO.puts "status 6"
+      IO.inspect x
+      IO.inspect lastIndex
+      IO.inspect args
+      IO.inspect value
+      if Enum.at(args, x, "") == " " do
+        if x == lastIndex do
+          parsed = Integer.parse(value)
+          IO.inspect parsed
+          value = elem(parsed, 0)
+          IO.inspect value
+          value
+        end
+        build_exp(args, x+1, exp, 6, value)
+      end 
+      # exit(:seems_bad)
+    end
+  end
+
+  if status < 1 do
+      if Enum.at(args, x, "") == "(" do
+        closeParen = find_close_paren(args, x+1, 0)
+        parensExp = build_exp(Enum.slice(args, (x+1)..(closeParen-1)), 0, exp, 0, "")
+        newExp = Enum.concat([Enum.slice(args, 0..(x-1)), [" ", Integer.to_string(parensExp), " "], Enum.slice(args, closeParen..lastIndex)])
+        build_exp(newExp, 0, [], 0, "")
+      end
+      if x == lastIndex do
+        build_exp(args, 0, exp, 1, value)
+      end
+      build_exp(args, x+1, exp, status, value)
+    end
+
+    if status == 1 do
+      if Enum.at(args, x, "") == "*" do
+        beforeMult = build_exp(Enum.slice(args, 0..(x-1)), 0, exp, 2, value) # Does not need to check for *
+        afterMult = build_exp(Enum.slice(args, (x+1)..lastIndex), 0, exp, 1, value) # Needs to check for *
+        beforeMult * afterMult
+      end
+      if x == lastIndex do
+        build_exp(args, 0, exp, 2, value)
+      end
+      build_exp(args, x+1, exp, status, value)
+    end
+
+    if status == 2 do
+      if Enum.at(args, x, "") == "/" do
+        beforeDiv = build_exp(Enum.slice(args, 0..(x-1)), 0, exp, 3, value) # Does not need to check for /
+        afterDiv = build_exp(Enum.slice(args, (x+1)..lastIndex), 0, exp, 2, value) # Needs to check for /
+        beforeDiv / afterDiv
+      end
+      if x == lastIndex do
+        build_exp(args, 0, exp, 3, value)
+      end
+      build_exp(args, x+1, exp, status, value)
+    end
+
+    if status == 3 do
+      if Enum.at(args, x, "") == "+" do
+        IO.puts "we are here"
+        IO.inspect Enum.slice(args, 0..(x-1))
+        IO.inspect Enum.slice(args, (x+1)..lastIndex)
+        IO.inspect build_exp(Enum.slice(args, 0..(x-1)), 0, exp, 4, value)
+        beforeAdd = build_exp(Enum.slice(args, 0..(x-1)), 0, exp, 4, value) # Does not need to check for +
+        IO.puts "beforeAdd completed"
+        afterAdd = build_exp(Enum.slice(args, (x+1)..lastIndex), 0, exp, 3, value) # Needs to check for +
+        return = beforeAdd + afterAdd
+        return
+      end
+      if x == lastIndex do
+        build_exp(args, 0, exp, 4, value)
+      end
+      build_exp(args, x+1, exp, status, value)
+    end
+
+    if status == 4 do
+      if Enum.at(args, x, "") == "-" do
+        beforeSub = build_exp(Enum.slice(args, 0..(x-1)), 0, exp, 5, value) # Does not need to check for *
+        afterSub = build_exp(Enum.slice(args, (x+1)..lastIndex), 0, exp, 4, value) # Needs to check for *
+        beforeSub - afterSub
+      end
+      if x == lastIndex do
+        build_exp(args, 0, exp, 5, value)
+      end
+      build_exp(args, x+1, exp, status, value)
+    end
+
+
+
+  # def eval_exp(exp) do
+    # if exp[0] isArray, eval_exp(exp[0]) exp[1] exp[2]
+    # if exp[2] isArray, exp[0] exp[1] eval_exp(exp[2])
+    # return exp[0] exp[1] exp[2]
+  # end
+
+   
+    if status == 5 do # PARSE NUMBER
+      IO.puts "status 5"
+      IO.inspect x
+      IO.inspect args
+      IO.inspect value
+      cond do
+        x == lastIndex ->
+          newChar = Enum.at(args, x, "")
+          parsed = Integer.parse("#{value}#{newChar}")
+          value = elem(parsed, 0)
+          IO.puts "return"
+          IO.inspect value
+          value
+        Enum.at(args, x, "") == " " ->
+          cond do
+            value == "" ->
+              build_exp(args, x+1, exp, 5, "")
+            true ->
+              build_exp(args, x, exp, 6, value)
+          end
+        true ->
+          newChar = Enum.at(args, x, "")
+          build_exp(args, x+1, exp, 5, "#{value}#{newChar}")
+      end
+    end
+
+    if status == 6 do # Number should be done
+      IO.puts "status 6"
+      IO.inspect x
+      IO.inspect lastIndex
+      IO.inspect args
+      IO.inspect value
+      if Enum.at(args, x, "") == " " do
+        if x == lastIndex do
+          parsed = Integer.parse(value)
+          IO.inspect parsed
+          value = elem(parsed, 0)
+          IO.inspect value
+          value
+        end
+        build_exp(args, x+1, exp, 6, value)
+      end 
+      # exit(:seems_bad)
+    end
+  end
+
+
+   
+
+    ############################
+    ## IGNORE ##################
+    ############################
+
+    # if Enum.count(exp) == 0 do
+    #  if Enum.at(args, x, "") == "(" do
+    #    closeParen = find_close_paren(args, x+1)
+    #    build_exp(args, closeParen, [build_exp(Enum.slice(args, (x+1)..closeParen))], 0, 0)
+    #  end
+    # if open parens, find closing paren and return build_exp(args, closeParen, [build_exp(args.slice(open, closeParen)), "", ""], 0, 0 )], 0, 0)
+    #  if Enum.at(args, x, "") == " " do
+    #    build_exp(args, x+1, exp, status, value)
+    #  end
+    #  if Enum.at(args, x, "") != "" do
+    #    build_exp(args, x+1, exp, status, "#{value}#{Enum.at(args, x, "")}")
+    #  end
+    
+    # if no open parens in expression, build_exp(args, 0, [], 1, 0)
+    # if status 1 && args[x] == *, [build_exp(args.slice(0,x), 0, [], 2), "*", build_exp(args.slice(x), 0, [], 1)]
+    # if status 2 and /, [build_exp(args.slice(0,x), 0, [], 3), "/", build_exp(args.slice(x), 0, [], 2)]
+    # if status 3 and +, [build_exp(args.slice(0,x), 0, [], 4), "+", build_exp(args.slice(x), 0, [], 3)]
+    # if status 4 and -, [build_exp(args.slice(0,x), 0, [], 5), "-", build_exp(args.slice(x), 0, [], 4)]
+
+    # if status 5 && args[x] == " " && value == "", build_exp(args, x+1, exp, 5, value)
+    # if status 5 && args[x] != " ", build_exp(args, x+1, exp, 5, value.append(args[x]))
+    # if status 5 && args[x] == " " && value != "" --> CRASH
+    # if status 5 && args[x] == "" --> try to return parseInt(value)
+
+    # if run out of chars (arg[x] == "\n"), build_exp(args, 0, exp, status + 1)
+
+    ## USE Integer.parse, tuple as data type for args
+
+
+    # if exp = []
+      # FIRST ARG
+      # if args[x] = "(" then 
+      #   firstArg = build_exp(args, x+1, [], 1, 0)
+      #   return build_exp(args, x+1, [firstArg, "", ""], status, parens + 1)
+    # if parens != 0 && args[x] != "(" then build_exp(args, x+1, exp, status, parens + 1)
+    # if parens != 0 && args[x] != ")" then build_exp(args, x+1, exp, status, parens)
+    # if parens != 0 && args[x] == ")" then build_exp(args, x+1, exp, status, parens - 1)
+
+    # if status == 1 && args[x] != "*" then build_exp(args, x+1, exp, status, parens)
+    # if args[x] == "*" then 
+    #   secondArg = build_exp(args.slice(x+1), 0, [], 1, 0)
+    #   return build_exp(args, x+1, [exp[0], "*", secondArg], status, parens)
+
+    # if status == 2 && args[x] != "/" then build_exp(args, x+1, exp, status, parens)
+    # if args[x] == "/" then build_exp(args, x+1, [exp[0], "/", ""], 1, parens)
+
+    # if status == 3 && args[x] != "+" then build_exp(args, x+1, exp, status, parens)
+    # if args[x] == "+" then build_exp(args, x+1, [exp[0], "+", ""], 1, parens)
+
+    # if status == 4 && args[x] != "-" then build_exp(args, x+1, exp, status, parens)
+    # if args[x] == "-" then build_exp(args, x+1, [exp[0], "-", ""], 1, parens)
+
+    # if status < 0
+    # if args[x] = ")" then build_exp(args, x+1, exp, status + 1)
+
+    # OPERATOR
+    # if !exp[1]
+    # if args[x] = " " build_exp(args, x+1, exp, false)
+    # if args[x] = +,-,/,*
+
+  # def eval_arg(x, args, num, val) do
+    # if args[x] is "", eval_arg(x+1, args) #constructor with no num/val
+    # if args[x] is " " && current != "" error and crash
+    # if args[x] is ")" && current != "", return Integer.parse(current)
+    # if args[x] is "(" -> eval_arg(x+1, args)
+    # if args[x] is "-" && current != "", eval_arg(x+1, args, "-")
+    # if args[x] is int, eval_arg(x+1, args, current.append(args[x]))
+    # if args[x] is " ", eval_op(x+1, args, Integer.parse(current))
+  # end
+
+  # def eval_op(x, args, val) do
+    # if args[x] is "(", crash and error
+    # if args[x] is " ", eval_op(x+1, args, val)
+    # if args[x] is "+",
+  # end 
+
+
+
+
+
+  def build_exp(args, x, status) when status == 2 do
+    lastIndex = Enum.count(args) - 1
+    cond do
+      (Enum.at(args, x, "") == "+") ->
+        # IO.puts "we are here"
+        # IO.inspect Enum.slice(args, 0..(x-1))
+        # IO.inspect Enum.slice(args, (x+1)..lastIndex)
+        # IO.inspect build_exp(Enum.slice(args, 0..(x-1)), 0, 4)
+        beforeAdd = build_exp(Enum.slice(args, 0..(x-1)), 0, 3) # Does not need to check for +
+        # IO.puts "beforeAdd completed"
+        afterAdd = build_exp(Enum.slice(args, (x+1)..lastIndex), 0, 2) # Needs to check for +
+        return = beforeAdd + afterAdd
+        return
+      (x == lastIndex) ->
+        build_exp(args, 0, 3)
+      true ->
+        build_exp(args, x+1, status)
+    end
+  end
+
+  def build_exp(args, x, status) when status == 3 do
+    lastIndex = Enum.count(args) - 1
+    cond do
+      (Enum.at(args, x, "") == "/") ->
+        beforeDiv = build_exp(Enum.slice(args, 0..(x-1)), 0, 4) # Does not need to check for /
+        afterDiv = build_exp(Enum.slice(args, (x+1)..lastIndex), 0, 3) # Needs to check for /
+        beforeDiv / afterDiv
+      (x == lastIndex) ->
+        build_exp(args, 0, 4)
+      true ->
+        build_exp(args, x+1, status)
+    end
+  end
+
+  def build_exp(args, x, status) when status == 4 do
+    lastIndex = Enum.count(args) - 1
+    cond do
+      (Enum.at(args, x, "") == "*") ->
+        beforeMult = build_exp(Enum.slice(args, 0..(x-1)), 0, 5) # Does not need to check for *
+        afterMult = build_exp(Enum.slice(args, (x+1)..lastIndex), 0, 4) # Needs to check for *
+        beforeMult * afterMult
+      (x == lastIndex) ->
+        build_exp(args, 0, 5)
+      true ->
+        build_exp(args, x+1, status)
+    end
+  end
+
+  def build_exp(args, x, status) when status == 5 do
+    lastIndex = Enum.count(args) - 1
+    parse_arg(args)
+  end
